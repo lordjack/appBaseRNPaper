@@ -125,7 +125,7 @@ class Fire {
   //############ Fim CRUD sem Imagens ############
 
   //############ CRUD com Imagens ############
-  saveWithImagens = async ({ entidade, dataForm, images }) => {
+  saveWithImagens = async (entidade, dataForm, images) => {
     var urlImg = [];
     var refItem = entidade; //nomeEntidade
     var KeyRef = "";

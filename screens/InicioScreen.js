@@ -46,6 +46,14 @@ export default class InicioScreen extends React.Component {
           >
             Usuário
           </Button>
+
+          <Button
+            icon="account"
+            mode="contained"
+            onPress={() => this.props.navigation.navigate("MaquinaList")}
+          >
+            Maquina
+          </Button>
         </Card.Content>
         {/*
         <BottomNavigation
