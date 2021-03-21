@@ -5,19 +5,16 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  Image,
   Animated,
 } from "react-native";
 import {
-  Button,
   Card,
   List,
-  SearchBar,
   TextInput,
-  Icon,
-  Colors,
-  Text,
   FAB,
+  Title,
+  Paragraph,
+  Divider,
 } from "react-native-paper";
 import { RectButton } from "react-native-gesture-handler";
 import Swipeable from "react-native-gesture-handler/Swipeable";
@@ -35,7 +32,11 @@ export default class UsuarioListScreen extends React.Component {
   }
 
   loadData = async () => {
-    const ref = Fire.db.database.ref(this.state.entidade);
+    /*  let vetorTemp = await Fire.load(this.state.entidade);
+    // console.log(vetorTemp);
+    this.setState({ data: vetorTemp }); */
+
+    const ref = Fire.db(this.state.entidade);
 
     await ref.on("value", (snapshot) => {
       var vetorTemp = [];
@@ -56,13 +57,11 @@ export default class UsuarioListScreen extends React.Component {
 
   search = (text) => {
     if (text) {
-      console;
-      let newArray = Fire.db.search(text, "nome", this.state.data);
+      let objSearch = Fire.search(text, "nome", this.state.data);
 
-      console.log(newArray.arrayItems);
       this.setState({
-        data: newArray.arrayItems,
-        search: newArray.text,
+        data: objSearch.dataArray,
+        search: objSearch.search,
       });
     } else {
       this.loadData();
@@ -71,8 +70,12 @@ export default class UsuarioListScreen extends React.Component {
   };
 
   async componentDidMount() {
-    await this.loadData();
+    this.loadData();
   }
+
+  /*  componentDidUpdate() {
+    this.loadData();
+  } */
 
   leftActions = (progress, dragX, key) => {
     const scale = dragX.interpolate({
@@ -118,7 +121,7 @@ export default class UsuarioListScreen extends React.Component {
                 },
                 {
                   text: "OK",
-                  onPress: () => Fire.db.remove(this.state.entidade, key),
+                  onPress: () => Fire.remove(this.state.entidade, key),
                 },
               ],
               { cancelable: false }
@@ -185,26 +188,42 @@ export default class UsuarioListScreen extends React.Component {
               value={this.state.search}
               left={<TextInput.Icon name="magnify" size={28} />}
             />
-            {this.state.data.map((item, i) => (
+            <ScrollView>
               <List.Section>
-                <Swipeable
-                  renderLeftActions={(progress, dragX) =>
-                    this.leftActions(progress, dragX, item.id)
-                  }
-                  renderRightActions={(progress, dragX) =>
-                    this.rightActions(progress, dragX, item.id)
-                  }
-                >
-                  <RectButton style={styles.leftAction} onPress={this.close}>
-                    <List.Item
-                      title={item.nome}
-                      description={item.telefone + " - " + item.datanascimento}
-                      left={(props) => <List.Icon {...props} icon="folder" />}
-                    />
-                  </RectButton>
-                </Swipeable>
+                {this.state.data.map((item, i) => (
+                  <Swipeable
+                    renderLeftActions={(progress, dragX) =>
+                      this.leftActions(progress, dragX, item.id)
+                    }
+                    renderRightActions={(progress, dragX) =>
+                      this.rightActions(progress, dragX, item.id)
+                    }
+                  >
+                    <Divider />
+                    <RectButton style={styles.leftAction} onPress={this.close}>
+                      <Card.Title
+                        style={{ height: 80, backgroundColor: "#f8f9fa" }}
+                        left={(props) => (
+                          <View>
+                            <Card.Cover
+                              style={styles.imagemCard}
+                              {...props}
+                              source={require("../assets/favicon.png")}
+                            />
+                          </View>
+                        )}
+                      />
+                      <Card.Content style={styles.descricao}>
+                        <Title style={styles.titulo}>{item.nome}</Title>
+                        <Paragraph>{item.telefone}</Paragraph>
+                        <Paragraph>{item.datanascimento}</Paragraph>
+                      </Card.Content>
+                      <Divider />
+                    </RectButton>
+                  </Swipeable>
+                ))}
               </List.Section>
-            ))}
+            </ScrollView>
           </Card.Content>
         </Card>
         <FAB
@@ -234,24 +253,18 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: "#09f",
   },
-  buttonTextStyle: {
-    color: "#fff",
-    textAlign: "center",
-    fontSize: 16,
-  },
-  touchableOpacityStyle: {
-    position: "absolute",
-    width: 50,
+  imagemCard: {
     height: 50,
-    alignItems: "center",
-    justifyContent: "center",
-    right: 30,
-    bottom: 30,
+    width: 50,
+    marginLeft: -10,
   },
-  floatingButtonStyle: {
-    resizeMode: "contain",
-    width: 80,
-    height: 80,
-    //backgroundColor: "black",
+  descricao: {
+    marginLeft: 60,
+    marginTop: -5,
+    position: "absolute",
+  },
+  titulo: {
+    fontWeight: "bold",
+    fontSize: 20,
   },
 });

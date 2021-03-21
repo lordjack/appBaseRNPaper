@@ -1,4 +1,4 @@
-import FirebaseKeys from "./config";
+import FirebaseKey from "./config";
 import firebase from "firebase";
 //import firestore from "firebase/firestore";
 
@@ -6,13 +6,11 @@ class Fire {
   constructor() {
     //verifica se o firebase já foi inicializado
     if (!firebase.apps.length) {
-      firebase.initializeApp(FirebaseKeys);
+      firebase.initializeApp(FirebaseKey);
     }
   }
 
-  //############  CRUD sem Imagens ############
-
-  save = (refName, dataForm) => {
+  save = async (refName, dataForm) => {
     delete dataForm.id; //deleta o atributo id por ser um insert
 
     //uma promese que realiza o salvamento do formulário
@@ -25,6 +23,10 @@ class Fire {
           console.log("Inserido! - " + snapshot.key);
 
           res(snapshot.key); // retorna o id salvo
+
+          dataForm.id = snapshot.key;
+          //atualizando os dados para acrescentar o id
+          this.update(refName, dataForm, dataForm.id);
         })
         .catch((error) => {
           rej(error);
@@ -51,9 +53,7 @@ class Fire {
 
   remove = async (refName, key) => {
     //remove os registros da entidade
-    await firebase
-      .database()
-      .ref(refName + "/" + key) //passa a referencia da entidade e concatena com o id a ser removido
+    await this.db(refName + "/" + key) //passa a referencia da entidade e concatena com o id a ser removido
       .remove()
       .then(() => {
         console.log("Removido..");
@@ -65,7 +65,7 @@ class Fire {
 
   search = (text, field, arrayData) => {
     //realiza o filtro da pesquisa referente ao campo
-    const newArray = arrayData.filter((item) => {
+    const data = arrayData.filter((item) => {
       //Coloca o campo do array em caixa alta
       const itemDado = item[field]
         ? item[field].toUpperCase()
@@ -73,59 +73,44 @@ class Fire {
 
       //coloca o texto digitado em caixa alta
       const textDado = text.toUpperCase();
-      //   console.log(item[field]);
 
       //indexOf retorna possição inicial do vetor passando os dados do vetor
       return itemDado.indexOf(textDado) > -1;
     });
 
     //objeto com o novo vetor filtrado e o texto digitado
-    let objItems = {
-      arrayItems: newArray,
+    return {
+      dataArray: data,
       search: text,
     };
-
-    return objItems;
   };
 
+  // carrega os dados a partir de uma referencia de documento
   load = async (refName) => {
-    return new Promise((res, rej) => {
-      Fire.db.database
-        .ref(refName)
-        .on("value", (snapshot) => {
-          var arrayDataTemp = [];
-          var arrayKeyTemp = [];
-          snapshot.forEach((child) => {
-            arrayDataTemp.push({ id: child.key, data: child.val() });
-          });
-          /*
-          // arrayKeyTemp.concat(arrayDataTemp);
+    const ref = this.db(refName);
+    var vetorTemp = [];
 
-          const result = Array.from(
-            arrayDataTemp.id
-              .reduce((r, o) => {
-                if (r.has(o.id)) r.get(o.id).children.push(o);
+    await ref.on("value", (snapshot) => {
+      if (snapshot) {
+        let data = {};
+        snapshot.forEach((child) => {
+          //if (child.key !== data.id) {
+          data.id = child.key;
+          data = child.val();
+          // }
+          vetorTemp.push(data);
 
-                return r;
-              }, new Map(arrayDataTemp.map((o) => [o.id, { ...o, children: [] }])))
-              .values()
-          );
-
-          console.log(result);
-          
-          */
-          //console.log(arrayDataTemp);
-          res({ data: arrayKeyTemp });
-        })
-        .catch((error) => {
-          rej(error);
+          //delete data.id; //deleta o atributo id por ser um insert
         });
+      }
     });
+
+    return vetorTemp;
   };
   //############ Fim CRUD sem Imagens ############
 
   //############ CRUD com Imagens ############
-  saveWithImagens = async ({ entidade, dataForm, images }) => {
+  saveWithImagens = async (entidade, dataForm, images) => {
     var urlImg = [];
     var refItem = entidade; //nomeEntidade
     var KeyRef = "";
@@ -141,11 +126,7 @@ class Fire {
         //deleta as imagens associadas a entidade
         for (let i = 0; i < dataForm.length; i++) {
           console.log(dataForm.images[i]);
-          await firebase
-            .storage()
-            .ref()
-            .child(dataForm.images[i].path)
-            .delete();
+          await this.storage().child(dataForm.images[i].path).delete();
         }
       }
 
@@ -176,9 +157,7 @@ class Fire {
     this.removeFileImage(refName, key);
 
     //remove os registros da entidade
-    await firebase
-      .database()
-      .ref(refName + "/" + key) //passa a referencia da entidade e concatena com o id a ser removido
+    await this.db(refName + "/" + key) //passa a referencia da entidade e concatena com o id a ser removido
       .remove()
       .then(() => {
         console.log("Removido..");
@@ -190,7 +169,7 @@ class Fire {
 
   removeFileImage = async (refName, key) => {
     //cria uma variavel com a referencia do nome da entidade e o id
-    const ref = firebase.database().ref(refName + "/" + key);
+    const ref = this.db(refName + "/" + key);
 
     await ref
       .once("value")
@@ -198,9 +177,7 @@ class Fire {
         //percorre o vetor com a qtd de itens a serem removidos
         for (let i = 0; i < snapshot.val().images.length; i++) {
           console.log(snapshot.val().images[i].path);
-          firebase
-            .storage()
-            .ref()
+          this.storage()
             .child(snapshot.val().images[i].path) //passa o destino das imagens que serão removidas
             .delete();
         }
@@ -220,11 +197,8 @@ class Fire {
     //cria a url da imagem que será salva no firebase
     let path = "images/" + tipoImagem + "/" + id + ".jpg";
 
-    //console.log(uri);
     return new Promise((res, rej) => {
-      firebase
-        .storage()
-        .ref()
+      this.storage()
         .child(path) //passa a url onde será salvo a imagem
         .put(blob) // passa o arquivo que será salvo
         .then(function (snapshot) {
@@ -241,27 +215,27 @@ class Fire {
 
   //############ Fim Upload Imagens ############
 
-  get firestore() {
+  firestore() {
     return firebase.firestore();
   }
-  get database() {
-    return firebase.database();
+  db(document = null) {
+    return firebase.database().ref(document);
   }
-  get storage() {
-    return firebase.storage();
+  storage() {
+    return firebase.storage().ref();
   }
-  get uid() {
+  uid() {
     return 1;
     // (firebase.auth().currentUser || {}).uid;
   }
 
-  get timestemp() {
+  timestemp() {
     //retorna a data atual
     return Date.now();
   }
 }
 
 //cria o objeto da classe Fire
-Fire.db = new Fire();
+Fire = new Fire();
 //exporta o objeto Fire para ficar visivel aos demais arquivos do projeto
 export default Fire;
