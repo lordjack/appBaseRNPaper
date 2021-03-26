@@ -1,63 +1,75 @@
-import React from "react";
+import React, {Component} from "react";
 import {
-    StyleSheet,
-    View,
-    TouchableOpacity,
-    ScrollView,
-    Alert,
     Animated,
+    StyleSheet,
+    Alert,
+    TouchableOpacity,
+    View,
+    Text,
 } from "react-native";
 import {
+    Button,
     Card,
     List,
     TextInput,
-    FAB,
+    Avatar,
     Title,
-    Paragraph,
+    Caption,
+    FAB,
     Divider,
+    IconButton,
+    Paragraph,
 } from "react-native-paper";
-import {RectButton} from "react-native-gesture-handler";
+import {RectButton, ScrollView} from "react-native-gesture-handler";
 import Swipeable from "react-native-gesture-handler/Swipeable";
+// Componentes
+//import firebase from './firebase_';
 import Fire from "./../components/Fire";
 
-export default class UsuarioListScreen extends React.Component {
+export default class ProdutoListScreen extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            entidade: "usuario",
+            entidade: "produto",
             data: [],
-            search: "",
-            trans: "",
+            search: null,
         };
     }
 
-    loadData = async () => {
-        /*  let vetorTemp = await Fire.load(this.state.entidade);
-        // console.log(vetorTemp);
-        this.setState({ data: vetorTemp }); */
+    loadUsers = () => {
+        fetch("https://randomuser.me/api/?results=7")
+            .then((res) => res.json())
+            .then((res) => {
+                this.setState({data: res.results || []});
+            });
+    };
 
+    loadData = async () => {
         const ref = Fire.db(this.state.entidade);
 
         await ref.on("value", (snapshot) => {
             var vetorTemp = [];
-            if (snapshot) {
-                snapshot.forEach((child) => {
-                    vetorTemp.push({
-                        id: child.key,
-                        nome: child.val().nome,
-                        telefone: child.val().telefone,
-                        datanascimento: child.val().datanascimento,
-                    });
+            snapshot.forEach((child) => {
+                vetorTemp.push({
+                    id: child.key,
+                    titulo: child.val().titulo,
+                    descricao: child.val().descricao,
+                    images: child.val().images,
+                    preco: child.val().preco,
+                    tipo: child.val().tipo,
+                    categoria: child.val().categoria,
+                    latitude: child.val().latitude,
+                    longitude: child.val().longitude,
                 });
-            }
+            });
 
             this.setState({data: vetorTemp});
         });
     };
 
     search = (text) => {
-        if (text) {
-            let objSearch = Fire.search(text, "nome", this.state.data);
+        if (text != "") {
+            let objSearch = Fire.search(text, "titulo", this.state.data);
 
             this.setState({
                 data: objSearch.dataArray,
@@ -65,17 +77,13 @@ export default class UsuarioListScreen extends React.Component {
             });
         } else {
             this.loadData();
-            this.setState({search: ""});
+            this.setState({search: null});
         }
     };
 
     async componentDidMount() {
-        this.loadData();
+        await this.loadData();
     }
-
-    /*  componentDidUpdate() {
-      this.loadData();
-    } */
 
     leftActions = (progress, dragX, key) => {
         const scale = dragX.interpolate({
@@ -121,7 +129,7 @@ export default class UsuarioListScreen extends React.Component {
                                 },
                                 {
                                     text: "OK",
-                                    onPress: () => Fire.remove(this.state.entidade, key),
+                                    onPress: () => Fire.removeWithFiles(this.state.entidade, key),
                                 },
                             ],
                             {cancelable: false}
@@ -149,7 +157,7 @@ export default class UsuarioListScreen extends React.Component {
                 </TouchableOpacity>
                 <TouchableOpacity
                     onPress={() =>
-                        this.props.navigation.navigate("UsuarioForm", {
+                        this.props.navigation.navigate("ProdutoForm", {
                             key: key,
                         })
                     }
@@ -179,7 +187,7 @@ export default class UsuarioListScreen extends React.Component {
 
     render() {
         return (
-            <View style={styles.container}>
+            <View style={styles.organiza}>
                 <Card>
                     <Card.Content>
                         <TextInput
@@ -202,21 +210,44 @@ export default class UsuarioListScreen extends React.Component {
                                         <Divider/>
                                         <RectButton style={styles.leftAction} onPress={this.close}>
                                             <Card.Title
-                                                style={{height: 80, backgroundColor: "#f8f9fa"}}
+                                                style={{height: 150, backgroundColor: "#f8f9fa"}}
+                                                right={(props) => (
+                                                    <IconButton
+                                                        {...props}
+                                                        icon="dots-vertical"
+                                                        onPress={() => {
+                                                            Alert.alert(
+                                                                "Informações",
+                                                                "Arraste para o lado direito Edite ou Exclua, esquerdo para ver detalhes."
+                                                            );
+                                                        }}
+                                                    />
+                                                )}
                                                 left={(props) => (
                                                     <View>
-                                                        <Card.Cover
-                                                            style={styles.imagemCard}
-                                                            {...props}
-                                                            source={require("../assets/favicon.png")}
-                                                        />
+                                                        {this.state.data === 0 ||
+                                                        item.images === undefined ? (
+                                                            <Card.Cover
+                                                                style={styles.imagemCard}
+                                                                {...props}
+                                                                source={require("../assets/favicon.png")}
+                                                            />
+                                                        ) : (
+                                                            <Card.Cover
+                                                                style={styles.imagemCard}
+                                                                {...props}
+                                                                source={{
+                                                                    uri: item.images[0].uri,
+                                                                }}
+                                                            />
+                                                        )}
                                                     </View>
                                                 )}
                                             />
                                             <Card.Content style={styles.descricao}>
-                                                <Title style={styles.titulo}>{item.nome}</Title>
-                                                <Paragraph>{item.telefone}</Paragraph>
-                                                <Paragraph>{item.datanascimento}</Paragraph>
+                                                <Title style={styles.titulo}>{item.titulo}</Title>
+                                                <Paragraph>R$ {item.preco}</Paragraph>
+                                                <Paragraph>{item.categoria}</Paragraph>
                                             </Card.Content>
                                             <Divider/>
                                         </RectButton>
@@ -230,7 +261,7 @@ export default class UsuarioListScreen extends React.Component {
                     style={styles.fab}
                     icon="plus"
                     onPress={() =>
-                        this.props.navigation.navigate("UsuarioForm", {key: ""})
+                        this.props.navigation.navigate("ProdutoForm", {key: ""})
                     }
                 />
             </View>
@@ -239,12 +270,10 @@ export default class UsuarioListScreen extends React.Component {
 }
 
 const styles = StyleSheet.create({
-    container: {
+    organiza: {
         flex: 1,
-        flexDirection: "column",
-        backgroundColor: "#fff",
-        alignItems: "stretch",
-        justifyContent: "flex-start",
+        justifyContent: "space-between",
+        padding: 10,
     },
     fab: {
         position: "absolute",
@@ -253,18 +282,52 @@ const styles = StyleSheet.create({
         bottom: 0,
         backgroundColor: "#09f",
     },
-    imagemCard: {
+    line: {
         height: 50,
-        width: 50,
-        marginLeft: -10,
+        flexDirection: "row",
+        borderBottomColor: "#ccc",
+        borderBottomWidth: 1,
+    },
+    imagemCard: {
+        height: 140,
+        width: 140,
+        marginLeft: -20,
     },
     descricao: {
-        marginLeft: 60,
-        marginTop: -5,
+        marginLeft: 130,
+        marginTop: 5,
         position: "absolute",
     },
     titulo: {
         fontWeight: "bold",
         fontSize: 20,
+    },
+    texto: {
+        marginTop: 20,
+        textAlign: "center",
+        marginBottom: 20,
+    },
+    input: {
+        width: 170,
+        marginTop: 10,
+        borderRadius: 15,
+        height: 44,
+        justifyContent: "center",
+        marginLeft: "auto",
+        marginRight: "auto",
+        alignItems: "center",
+        marginBottom: 10,
+        backgroundColor: "blue",
+    },
+    inputd: {
+        width: 125,
+        borderRadius: 10,
+        height: 30,
+        justifyContent: "center",
+        marginLeft: "auto",
+        marginRight: "auto",
+        alignItems: "center",
+        backgroundColor: "blue",
+        marginBottom: 5,
     },
 });
