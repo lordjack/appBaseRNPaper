@@ -9,7 +9,7 @@ import {
 } from "react-native-paper-tabs";
 
 import SobreScreen from "./SobreScreen";
-import Detalhe from "./Detalhe";
+import DetalheScreen from "./DetalheScreen";
 
 //import UsuarioList from "./UsuarioListScreen";
 
@@ -69,7 +69,7 @@ export default class InicioScreen extends React.Component {
                 </TabScreen>
                 <TabScreen label="Usuário" icon="account">
                     <View style={{flex: 1}}>
-                        <Detalhe/>
+                        <DetalheScreen/>
                     </View>
                 </TabScreen>
                 <TabScreen label="Sobre" icon="information">
